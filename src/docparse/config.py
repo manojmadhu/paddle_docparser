@@ -3,7 +3,7 @@
 Example: DOCPARSE_DEVICE=gpu:0  DOCPARSE_CPU_THREADS=8
 """
 import os
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, field, fields
 
 
 @dataclass
@@ -25,7 +25,6 @@ class Settings:
     # Optional features (only *run* when the router detects them on a page)
     enable_orientation: bool = True
     enable_tables: bool = True
-    enable_charts: bool = True          # chart -> table; slow on CPU
     enable_formulas: bool = True
     enable_seals: bool = False
 
@@ -39,8 +38,12 @@ class Settings:
     min_text_layer_chars: int = 50       # fewer chars => treat page as scanned
     scanned_image_coverage: float = 0.85 # page that is one big image => scanned
     embedded_image_min_area: float = 0.10  # OCR images covering >=10% of a page
-    max_pages: int = 200
+    max_pages: int = 100                 # pages processed per request
+    max_render_pixels: int = 25_000_000  # cap for one rendered PDF page (~5000 x 5000 px)
     max_upload_mb: int = 50
+
+    # Security: clients must send this in the X-API-Key header (required by the API)
+    api_key: str = field(default="", repr=False)
 
     @classmethod
     def from_env(cls) -> "Settings":

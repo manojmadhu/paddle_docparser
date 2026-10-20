@@ -83,17 +83,6 @@ def html_table_to_rows(html: str) -> list:
     return parser.rows
 
 
-def chart_text_to_rows(text: str) -> list:
-    """Chart recognition returns a pipe-separated table; split it into rows."""
-    rows = []
-    for line in (text or "").splitlines():
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if not any(cells) or all(set(c) <= set("-: ") for c in cells):
-            continue  # skip blank and separator lines like |---|---|
-        rows.append(cells)
-    return rows
-
-
 def clean_rows(rows) -> list:
     return [[(c or "").replace("\n", " ").strip() for c in row] for row in rows or []]
 
@@ -112,6 +101,28 @@ def rows_to_markdown(rows) -> str:
     return "\n".join(lines)
 
 
+def to_plain_text(pages: list) -> str:
+    """All text of the document in reading order, one string.
+    Pages start with '=== Page N ==='; table rows are written as '| a | b |'."""
+    out = []
+    for page in pages:
+        chunks = []
+        for b in page["blocks"]:
+            kind, text = b["type"], (b.get("text") or "").strip()
+            if kind == "table" and b.get("rows"):
+                chunks.append("\n".join("| " + " | ".join(row) + " |" for row in b["rows"]))
+            elif kind == "image":
+                chunks.append("[image]" + (f"\n{text}" if text else ""))
+            elif kind == "formula":
+                latex = (b.get("latex") or text).strip()
+                if latex:
+                    chunks.append(latex)
+            elif text:
+                chunks.append(text)
+        out.append(f"=== Page {page['page']} ===\n" + "\n\n".join(chunks))
+    return "\n\n".join(out)
+
+
 def to_markdown(result: dict) -> str:
     out = []
     for page in result["pages"]:
@@ -122,8 +133,8 @@ def to_markdown(result: dict) -> str:
                 out.append(f"# {text}")
             elif kind == "heading":
                 out.append(f"## {text}")
-            elif kind in ("table", "chart") and b.get("rows"):
-                out.append(("**Chart**\n\n" if kind == "chart" else "") + rows_to_markdown(b["rows"]))
+            elif kind == "table" and b.get("rows"):
+                out.append(rows_to_markdown(b["rows"]))
             elif kind == "formula":
                 out.append(f"$$\n{b.get('latex') or text}\n$$")
             elif kind == "image":

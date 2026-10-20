@@ -13,6 +13,14 @@ class UnsupportedFileError(ValueError):
     pass
 
 
+class InvalidPageRangeError(ValueError):
+    pass
+
+
+class TooManyPagesError(ValueError):
+    pass
+
+
 def detect_file_type(data: bytes) -> str:
     """Detect by content (magic bytes), not by file extension."""
     head = data[:16]
@@ -90,24 +98,48 @@ class PdfFile:
             "image_coverage": biggest / page_area,
         }
 
-    def render(self, index: int, dpi: int) -> np.ndarray:
+    def render(self, index: int, scale: float) -> np.ndarray:
+        """Render a page. `scale` = pixels per PDF point (the parser caps it for huge pages)."""
         page = self._pdfium[index]
         try:
-            return pil_to_bgr(page.render(scale=dpi / 72).to_pil())
+            return pil_to_bgr(page.render(scale=scale).to_pil())
         finally:
             page.close()
 
 
-def parse_page_range(spec: str | None, total: int) -> list:
-    """'1-3,5' -> [0, 1, 2, 4] (zero-based). None -> all pages."""
-    if not spec:
+def parse_page_range(spec: str | None, total: int, max_pages: int | None = None) -> list:
+    """'1-3,5' -> [0, 1, 2, 4] (zero-based). None/empty -> all pages.
+
+    Every range is clamped to 1..total BEFORE it is expanded, so a request like
+    '1-10000000000' costs nothing. Raises TooManyPagesError when more than
+    `max_pages` pages would be processed, and InvalidPageRangeError for bad input.
+    """
+    def too_many(count):
+        return TooManyPagesError(
+            f"{count} pages requested; the limit is {max_pages} per request. "
+            f"Use the 'pages' option to pick a range, e.g. pages=1-{max_pages}.")
+
+    if not spec or not spec.strip():
+        if max_pages is not None and total > max_pages:
+            raise too_many(total)
         return list(range(total))
+
     pages = set()
     for part in spec.split(","):
         part = part.strip()
-        if "-" in part:
-            a, b = part.split("-", 1)
-            pages.update(range(int(a), int(b) + 1))
-        elif part:
-            pages.add(int(part))
-    return sorted(p - 1 for p in pages if 1 <= p <= total)
+        if not part:
+            continue
+        try:
+            if "-" in part:
+                a, b = (int(x) for x in part.split("-", 1))
+            else:
+                a = b = int(part)
+        except ValueError:
+            raise InvalidPageRangeError(f"Invalid page range '{spec}'. Use a form like 1-3,5.") from None
+        a, b = max(1, a), min(total, b)
+        if a > b:
+            continue  # outside the document
+        pages.update(range(a, b + 1))  # at most `total` items, thanks to the clamp
+        if max_pages is not None and len(pages) > max_pages:
+            raise too_many(len(pages))
+    return sorted(p - 1 for p in pages)

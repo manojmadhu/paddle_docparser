@@ -81,7 +81,7 @@ class PaddleModels:
             use_doc_unwarping=False,
             use_textline_orientation=False,
             use_table_recognition=self.s.enable_tables,
-            use_chart_recognition=self.s.enable_charts,
+            use_chart_recognition=False,   # PP-Chart2Table is never loaded (slow, can hang)
             use_formula_recognition=self.s.enable_formulas,
             use_seal_recognition=self.s.enable_seals,
             text_det_limit_side_len=self.s.det_limit_side_len,
@@ -126,14 +126,14 @@ class PaddleModels:
             out.append((j.get("rec_text", ""), float(j.get("rec_score", 0.0))))
         return out
 
-    def run_structure(self, img, tables=False, charts=False, formulas=False, seals=False) -> dict:
+    def run_structure(self, img, tables=False, formulas=False, seals=False) -> dict:
         return _first(self.structure.predict(
             img,
             use_doc_orientation_classify=False,
             use_doc_unwarping=False,
             use_textline_orientation=False,
             use_table_recognition=tables and self.s.enable_tables,
-            use_chart_recognition=charts and self.s.enable_charts,
+            use_chart_recognition=False,
             use_formula_recognition=formulas and self.s.enable_formulas,
             use_seal_recognition=seals and self.s.enable_seals,
         ))

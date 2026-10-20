@@ -57,8 +57,10 @@ def main(argv=None):
         if args.markdown:
             (out / f"{path.stem}.md").write_text(to_markdown(result), "utf-8")
         routes = sorted({r for p in result["pages"] for r in p["routes"]})
+        conf = result["confidence"]
         print(f"ok   {path.name}: {result['page_count']} page(s), "
-              f"{result['elapsed_ms'] / 1000:.1f}s, routes={','.join(routes)}")
+              f"{result['elapsed_ms'] / 1000:.1f}s, confidence={conf['overall']} (ocr={conf['ocr']}), "
+              f"low_lines={conf['low_confidence_lines']}, routes={','.join(routes)}")
     return 1 if failed else 0
 
 

@@ -1,14 +1,17 @@
+# Put your settings in a file named .env next to this file (copy .env.example).
+# DOCPARSE_API_KEY is required: compose stops with an error if it is missing.
 services:
-  # CPU:  docker compose up --build ocr
+  # CPU:  docker compose up --build -d ocr
   ocr:
     build: .
     ports: ["8080:8080"]
     shm_size: "2gb"
+    env_file: .env
     environment:
-      DOCPARSE_CPU_THREADS: "8"
+      DOCPARSE_API_KEY: "${DOCPARSE_API_KEY:?Set DOCPARSE_API_KEY in .env}"
     restart: unless-stopped
 
-  # GPU:  docker compose --profile gpu up --build ocr-gpu
+  # GPU:  docker compose --profile gpu up --build -d ocr-gpu
   ocr-gpu:
     profiles: ["gpu"]
     build:
@@ -16,6 +19,9 @@ services:
       dockerfile: Dockerfile.gpu
     ports: ["8081:8080"]
     shm_size: "8gb"
+    env_file: .env
+    environment:
+      DOCPARSE_API_KEY: "${DOCPARSE_API_KEY:?Set DOCPARSE_API_KEY in .env}"
     volumes:
       - models:/models           # keep downloaded models between restarts
     deploy:

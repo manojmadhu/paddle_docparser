@@ -52,9 +52,12 @@ def fake():
     return FakeModels()
 
 
+API_KEY = "test-key-0123456789abcdef"
+
+
 @pytest.fixture
 def parser(fake):
-    return DocumentParser(Settings(), models=fake)
+    return DocumentParser(Settings(api_key=API_KEY), models=fake)
 
 
 def _png(size=(600, 400), text="Hello"):
