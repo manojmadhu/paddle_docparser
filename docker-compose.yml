@@ -1,0 +1,31 @@
+services:
+  # CPU:  docker compose up --build ocr
+  ocr:
+    build: .
+    ports: ["8080:8080"]
+    shm_size: "2gb"
+    environment:
+      DOCPARSE_CPU_THREADS: "8"
+    restart: unless-stopped
+
+  # GPU:  docker compose --profile gpu up --build ocr-gpu
+  ocr-gpu:
+    profiles: ["gpu"]
+    build:
+      context: .
+      dockerfile: Dockerfile.gpu
+    ports: ["8081:8080"]
+    shm_size: "8gb"
+    volumes:
+      - models:/models           # keep downloaded models between restarts
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+volumes:
+  models:
